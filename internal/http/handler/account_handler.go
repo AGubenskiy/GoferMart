@@ -155,20 +155,7 @@ func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	err := h.loyalty.CreateWithdrawal(r.Context(), userID, request.Order, request.Sum)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidOrderNumber):
-			response.Status(w, http.StatusUnprocessableEntity)
-		case errors.Is(err, service.ErrInvalidInput):
-			response.Status(w, http.StatusBadRequest)
-		case errors.Is(err, service.ErrOrderConflict):
-			response.Status(w, http.StatusConflict)
-		case errors.Is(err, service.ErrInsufficientFunds):
-			response.Status(w, http.StatusPaymentRequired)
-		case errors.Is(err, service.ErrUnavailable):
-			response.Status(w, http.StatusInternalServerError)
-		default:
-			response.Status(w, http.StatusInternalServerError)
-		}
+		response.Status(w, withdrawalErrorStatus(err))
 		return
 	}
 
@@ -203,4 +190,19 @@ func (h *AccountHandler) ListWithdrawals(w http.ResponseWriter, r *http.Request)
 	}
 
 	response.JSON(w, http.StatusOK, items)
+}
+
+func withdrawalErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, service.ErrInvalidOrderNumber), errors.Is(err, service.ErrOrderNumberUnavailable):
+		return http.StatusUnprocessableEntity
+	case errors.Is(err, service.ErrInvalidInput):
+		return http.StatusBadRequest
+	case errors.Is(err, service.ErrInsufficientFunds):
+		return http.StatusPaymentRequired
+	case errors.Is(err, service.ErrUnavailable):
+		return http.StatusInternalServerError
+	default:
+		return http.StatusInternalServerError
+	}
 }

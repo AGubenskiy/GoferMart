@@ -9,4 +9,6 @@ var (
 	ErrOrderAlreadyUploadedByUser   = errors.New("order already uploaded by user")
 	ErrOrderUploadedByAnotherUser   = errors.New("order uploaded by another user")
 	ErrWithdrawalOrderAlreadyExists = errors.New("withdrawal order already exists")
+	ErrOrderNumberAlreadyReserved   = errors.New("order number already reserved")
+	ErrOrderNumberReservationMissed = errors.New("order number reservation not found")
 )

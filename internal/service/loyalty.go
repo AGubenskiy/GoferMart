@@ -11,10 +11,11 @@ import (
 )
 
 type LoyaltyService struct {
-	store       *postgres.Store
-	orders      *postgres.OrderRepository
-	users       *postgres.UserRepository
-	withdrawals *postgres.WithdrawalRepository
+	store        *postgres.Store
+	orders       *postgres.OrderRepository
+	orderNumbers *postgres.OrderNumberRepository
+	users        *postgres.UserRepository
+	withdrawals  *postgres.WithdrawalRepository
 }
 
 type UploadOrderResult struct {
@@ -29,10 +30,11 @@ func NewLoyaltyService(store *postgres.Store) *LoyaltyService {
 	repos := store.Repositories()
 
 	return &LoyaltyService{
-		store:       store,
-		orders:      repos.Orders,
-		users:       repos.Users,
-		withdrawals: repos.Withdrawals,
+		store:        store,
+		orders:       repos.Orders,
+		orderNumbers: repos.OrderNumbers,
+		users:        repos.Users,
+		withdrawals:  repos.Withdrawals,
 	}
 }
 
@@ -46,19 +48,42 @@ func (s *LoyaltyService) UploadOrder(ctx context.Context, userID int64, number s
 		return UploadOrderResult{}, ErrInvalidOrderNumber
 	}
 
-	err := s.orders.Add(ctx, userID, number)
-	if err == nil {
-		return UploadOrderResult{Accepted: true}, nil
-	}
+	var result UploadOrderResult
 
-	switch {
-	case errors.Is(err, postgres.ErrOrderAlreadyUploadedByUser):
-		return UploadOrderResult{Accepted: false}, nil
-	case errors.Is(err, postgres.ErrOrderUploadedByAnotherUser):
-		return UploadOrderResult{}, ErrOrderConflict
-	default:
+	err := s.store.WithTx(ctx, func(repos *postgres.Repositories) error {
+		if err := repos.OrderNumbers.Reserve(ctx, userID, number, postgres.OrderNumberKindUpload); err != nil {
+			if !errors.Is(err, postgres.ErrOrderNumberAlreadyReserved) {
+				return err
+			}
+
+			reservation, getErr := repos.OrderNumbers.Get(ctx, number)
+			if getErr != nil {
+				return getErr
+			}
+
+			return applyUploadReservationConflict(reservation, userID, &result)
+		}
+
+		if err := repos.Orders.Add(ctx, userID, number); err != nil {
+			switch {
+			case errors.Is(err, postgres.ErrOrderAlreadyUploadedByUser):
+				result = UploadOrderResult{Accepted: false}
+				return nil
+			case errors.Is(err, postgres.ErrOrderUploadedByAnotherUser):
+				return ErrOrderConflict
+			default:
+				return err
+			}
+		}
+
+		result = UploadOrderResult{Accepted: true}
+		return nil
+	})
+	if err != nil {
 		return UploadOrderResult{}, err
 	}
+
+	return result, nil
 }
 
 func (s *LoyaltyService) ListOrders(ctx context.Context, userID int64) ([]model.Order, error) {
@@ -96,6 +121,14 @@ func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, ord
 			return err
 		}
 
+		if err := repos.OrderNumbers.Reserve(ctx, userID, orderNumber, postgres.OrderNumberKindWithdrawal); err != nil {
+			if errors.Is(err, postgres.ErrOrderNumberAlreadyReserved) {
+				return ErrOrderNumberUnavailable
+			}
+
+			return err
+		}
+
 		balance, err := repos.Withdrawals.GetBalance(ctx, userID)
 		if err != nil {
 			return err
@@ -107,7 +140,7 @@ func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, ord
 
 		if err := repos.Withdrawals.Create(ctx, userID, orderNumber, sum); err != nil {
 			if errors.Is(err, postgres.ErrWithdrawalOrderAlreadyExists) {
-				return ErrOrderConflict
+				return ErrOrderNumberUnavailable
 			}
 
 			return err
@@ -123,4 +156,13 @@ func (s *LoyaltyService) ListWithdrawals(ctx context.Context, userID int64) ([]m
 	}
 
 	return s.withdrawals.ListByUser(ctx, userID)
+}
+
+func applyUploadReservationConflict(reservation postgres.OrderNumberReservation, userID int64, result *UploadOrderResult) error {
+	if reservation.Kind == postgres.OrderNumberKindUpload && reservation.UserID == userID {
+		*result = UploadOrderResult{Accepted: false}
+		return nil
+	}
+
+	return ErrOrderConflict
 }

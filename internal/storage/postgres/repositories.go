@@ -12,15 +12,17 @@ type queryer interface {
 }
 
 type Repositories struct {
-	Users       *UserRepository
-	Orders      *OrderRepository
-	Withdrawals *WithdrawalRepository
+	Users        *UserRepository
+	Orders       *OrderRepository
+	OrderNumbers *OrderNumberRepository
+	Withdrawals  *WithdrawalRepository
 }
 
 func newRepositories(q queryer) *Repositories {
 	return &Repositories{
-		Users:       &UserRepository{q: q},
-		Orders:      &OrderRepository{q: q},
-		Withdrawals: &WithdrawalRepository{q: q},
+		Users:        &UserRepository{q: q},
+		Orders:       &OrderRepository{q: q},
+		OrderNumbers: &OrderNumberRepository{q: q},
+		Withdrawals:  &WithdrawalRepository{q: q},
 	}
 }
