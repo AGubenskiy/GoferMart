@@ -28,15 +28,21 @@ func (r *OrderNumberRepository) Reserve(ctx context.Context, userID int64, numbe
 	//noinspection SqlNoDataSourceInspection
 	const query = `
 INSERT INTO order_numbers (number, user_id, kind, created_at)
-VALUES ($1, $2, $3, NOW())`
+VALUES ($1, $2, $3, NOW())
+ON CONFLICT (number) DO NOTHING`
 
-	_, err := r.q.ExecContext(ctx, query, number, userID, kind)
+	result, err := r.q.ExecContext(ctx, query, number, userID, kind)
 	if err != nil {
-		if isUniqueViolation(err) {
-			return ErrOrderNumberAlreadyReserved
-		}
-
 		return fmt.Errorf("reserve order number: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read affected rows for order number reserve: %w", err)
+	}
+
+	if affected == 0 {
+		return ErrOrderNumberAlreadyReserved
 	}
 
 	return nil
