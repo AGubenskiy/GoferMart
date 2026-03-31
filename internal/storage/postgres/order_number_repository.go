@@ -25,6 +25,7 @@ type OrderNumberRepository struct {
 }
 
 func (r *OrderNumberRepository) Reserve(ctx context.Context, userID int64, number string, kind OrderNumberKind) error {
+	//noinspection SqlNoDataSourceInspection
 	const query = `
 INSERT INTO order_numbers (number, user_id, kind, created_at)
 VALUES ($1, $2, $3, NOW())`
@@ -42,6 +43,7 @@ VALUES ($1, $2, $3, NOW())`
 }
 
 func (r *OrderNumberRepository) Get(ctx context.Context, number string) (OrderNumberReservation, error) {
+	//noinspection SqlNoDataSourceInspection
 	const query = `
 SELECT number, user_id, kind
 FROM order_numbers

@@ -1,3 +1,4 @@
+-- noinspection SqlNoDataSourceInspection
 CREATE TABLE IF NOT EXISTS order_numbers (
     number TEXT PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

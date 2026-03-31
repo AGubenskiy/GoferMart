@@ -51,7 +51,9 @@ func (h *AccountHandler) UploadOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() {
+		_ = r.Body.Close()
+	}()
 
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -145,7 +147,9 @@ func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() {
+		_ = r.Body.Close()
+	}()
 
 	var request withdrawalRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
