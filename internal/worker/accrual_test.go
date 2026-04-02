@@ -5,6 +5,7 @@ import (
 
 	"github.com/AGubenskiy/GoferMart/internal/accrual"
 	"github.com/AGubenskiy/GoferMart/internal/model"
+	"github.com/AGubenskiy/GoferMart/internal/money"
 )
 
 func TestMapAccrualOrder(t *testing.T) {
@@ -30,7 +31,7 @@ func TestMapAccrualOrder(t *testing.T) {
 		},
 		{
 			name:       "processed keeps accrual",
-			input:      accrual.Order{Status: accrual.OrderStatusProcessed, Accrual: floatPtr(10)},
+			input:      accrual.Order{Status: accrual.OrderStatusProcessed, Accrual: amountPtr(money.NewFromCents(1000))},
 			wantStatus: model.OrderStatusProcessed,
 			wantNil:    false,
 		},
@@ -52,6 +53,6 @@ func TestMapAccrualOrder(t *testing.T) {
 	}
 }
 
-func floatPtr(value float64) *float64 {
+func amountPtr(value money.Amount) *money.Amount {
 	return &value
 }

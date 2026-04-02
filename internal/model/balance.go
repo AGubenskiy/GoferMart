@@ -1,6 +1,8 @@
 package model
 
+import "github.com/AGubenskiy/GoferMart/internal/money"
+
 type Balance struct {
-	Current   float64
-	Withdrawn float64
+	Current   money.Amount
+	Withdrawn money.Amount
 }

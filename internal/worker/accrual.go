@@ -8,6 +8,7 @@ import (
 
 	"github.com/AGubenskiy/GoferMart/internal/accrual"
 	"github.com/AGubenskiy/GoferMart/internal/model"
+	"github.com/AGubenskiy/GoferMart/internal/money"
 	"github.com/AGubenskiy/GoferMart/internal/storage/postgres"
 )
 
@@ -105,7 +106,7 @@ func (w *AccrualWorker) syncOrder(ctx context.Context, order model.Order) (time.
 	return 0, nil
 }
 
-func mapAccrualOrder(order accrual.Order) (model.OrderStatus, *float64) {
+func mapAccrualOrder(order accrual.Order) (model.OrderStatus, *money.Amount) {
 	switch order.Status {
 	case accrual.OrderStatusInvalid:
 		return model.OrderStatusInvalid, nil

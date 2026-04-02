@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/AGubenskiy/GoferMart/internal/money"
 )
 
 var ErrOrderNotRegistered = errors.New("order not registered")
@@ -35,7 +37,7 @@ const (
 type Order struct {
 	Number  string
 	Status  OrderStatus
-	Accrual *float64
+	Accrual *money.Amount
 }
 
 type Client struct {
@@ -44,9 +46,9 @@ type Client struct {
 }
 
 type orderResponse struct {
-	Order   string   `json:"order"`
-	Status  string   `json:"status"`
-	Accrual *float64 `json:"accrual"`
+	Order   string        `json:"order"`
+	Status  string        `json:"status"`
+	Accrual *money.Amount `json:"accrual"`
 }
 
 func NewClient(address string) (*Client, error) {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/AGubenskiy/GoferMart/internal/http/response"
 	"github.com/AGubenskiy/GoferMart/internal/model"
+	"github.com/AGubenskiy/GoferMart/internal/money"
 	"github.com/AGubenskiy/GoferMart/internal/service"
 )
 
@@ -15,26 +16,26 @@ type AccountHandler struct {
 }
 
 type withdrawalRequest struct {
-	Order string  `json:"order"`
-	Sum   float64 `json:"sum"`
+	Order string       `json:"order"`
+	Sum   money.Amount `json:"sum"`
 }
 
 type orderResponse struct {
-	Number     string   `json:"number"`
-	Status     string   `json:"status"`
-	Accrual    *float64 `json:"accrual,omitempty"`
-	UploadedAt string   `json:"uploaded_at"`
+	Number     string        `json:"number"`
+	Status     string        `json:"status"`
+	Accrual    *money.Amount `json:"accrual,omitempty"`
+	UploadedAt string        `json:"uploaded_at"`
 }
 
 type balanceResponse struct {
-	Current   float64 `json:"current"`
-	Withdrawn float64 `json:"withdrawn"`
+	Current   money.Amount `json:"current"`
+	Withdrawn money.Amount `json:"withdrawn"`
 }
 
 type withdrawalResponse struct {
-	Order       string  `json:"order"`
-	Sum         float64 `json:"sum"`
-	ProcessedAt string  `json:"processed_at"`
+	Order       string       `json:"order"`
+	Sum         money.Amount `json:"sum"`
+	ProcessedAt string       `json:"processed_at"`
 }
 
 func NewAccountHandler(loyalty *service.LoyaltyService) *AccountHandler {

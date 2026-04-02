@@ -2,17 +2,17 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/AGubenskiy/GoferMart/internal/model"
+	"github.com/AGubenskiy/GoferMart/internal/money"
 )
 
 type WithdrawalRepository struct {
 	q queryer
 }
 
-func (r *WithdrawalRepository) Create(ctx context.Context, userID int64, orderNumber string, sum float64) error {
+func (r *WithdrawalRepository) Create(ctx context.Context, userID int64, orderNumber string, sum money.Amount) error {
 	const query = `
 INSERT INTO withdrawals (user_id, order_number, amount, processed_at)
 VALUES ($1, $2, $3, NOW())`
@@ -31,7 +31,7 @@ VALUES ($1, $2, $3, NOW())`
 
 func (r *WithdrawalRepository) ListByUser(ctx context.Context, userID int64) ([]model.Withdrawal, error) {
 	const query = `
-SELECT id, user_id, order_number, amount, processed_at
+SELECT id, user_id, order_number, amount::TEXT, processed_at
 FROM withdrawals
 WHERE user_id = $1
 ORDER BY processed_at DESC`
@@ -74,16 +74,16 @@ SELECT
         SELECT SUM(accrual)
         FROM orders
         WHERE user_id = $1 AND status = 'PROCESSED'
-    ), 0),
+    ), 0)::TEXT,
     COALESCE((
         SELECT SUM(amount)
         FROM withdrawals
         WHERE user_id = $1
-    ), 0)`
+    ), 0)::TEXT`
 
 	var (
-		accrued   sql.NullFloat64
-		withdrawn sql.NullFloat64
+		accrued   money.Amount
+		withdrawn money.Amount
 	)
 
 	if err := r.q.QueryRowContext(ctx, query, userID).Scan(&accrued, &withdrawn); err != nil {
@@ -91,8 +91,8 @@ SELECT
 	}
 
 	balance := model.Balance{
-		Current:   accrued.Float64 - withdrawn.Float64,
-		Withdrawn: withdrawn.Float64,
+		Current:   accrued - withdrawn,
+		Withdrawn: withdrawn,
 	}
 
 	return balance, nil

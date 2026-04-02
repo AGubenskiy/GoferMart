@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/AGubenskiy/GoferMart/internal/money"
 )
 
 func TestClientGetOrderProcessed(t *testing.T) {
@@ -36,7 +38,7 @@ func TestClientGetOrderProcessed(t *testing.T) {
 		t.Fatalf("GetOrder() status = %s, want %s", order.Status, OrderStatusProcessed)
 	}
 
-	if order.Accrual == nil || *order.Accrual != 500.5 {
+	if order.Accrual == nil || *order.Accrual != money.NewFromCents(50050) {
 		t.Fatalf("GetOrder() accrual = %v, want 500.5", order.Accrual)
 	}
 }

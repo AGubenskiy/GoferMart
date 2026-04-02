@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/AGubenskiy/GoferMart/internal/model"
+	"github.com/AGubenskiy/GoferMart/internal/money"
 	"github.com/AGubenskiy/GoferMart/internal/storage/postgres"
 	"github.com/AGubenskiy/GoferMart/internal/validate"
 )
@@ -102,7 +103,7 @@ func (s *LoyaltyService) GetBalance(ctx context.Context, userID int64) (model.Ba
 	return s.withdrawals.GetBalance(ctx, userID)
 }
 
-func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, orderNumber string, sum float64) error {
+func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, orderNumber string, sum money.Amount) error {
 	if s == nil {
 		return ErrUnavailable
 	}
@@ -112,7 +113,7 @@ func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, ord
 		return ErrInvalidOrderNumber
 	}
 
-	if sum <= 0 {
+	if !sum.IsPositive() {
 		return ErrInvalidInput
 	}
 

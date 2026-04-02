@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/AGubenskiy/GoferMart/internal/model"
+	"github.com/AGubenskiy/GoferMart/internal/money"
 )
 
 type OrderRepository struct {
@@ -41,7 +42,7 @@ VALUES ($1, $2, $3, NOW(), NOW())`
 
 func (r *OrderRepository) GetByNumber(ctx context.Context, number string) (model.Order, error) {
 	const query = `
-SELECT number, user_id, status, accrual, uploaded_at, updated_at
+SELECT number, user_id, status, accrual::TEXT, uploaded_at, updated_at
 FROM orders
 WHERE number = $1`
 
@@ -59,7 +60,7 @@ WHERE number = $1`
 
 func (r *OrderRepository) ListByUser(ctx context.Context, userID int64) ([]model.Order, error) {
 	const query = `
-SELECT number, user_id, status, accrual, uploaded_at, updated_at
+SELECT number, user_id, status, accrual::TEXT, uploaded_at, updated_at
 FROM orders
 WHERE user_id = $1
 ORDER BY uploaded_at DESC`
@@ -77,7 +78,7 @@ ORDER BY uploaded_at DESC`
 
 func (r *OrderRepository) ListForAccrualSync(ctx context.Context, limit int) ([]model.Order, error) {
 	const query = `
-SELECT number, user_id, status, accrual, uploaded_at, updated_at
+SELECT number, user_id, status, accrual::TEXT, uploaded_at, updated_at
 FROM orders
 WHERE status IN ($1, $2)
 ORDER BY uploaded_at ASC
@@ -94,13 +95,18 @@ LIMIT $3`
 	return scanOrders(rows)
 }
 
-func (r *OrderRepository) UpdateStatus(ctx context.Context, number string, status model.OrderStatus, accrual *float64) error {
+func (r *OrderRepository) UpdateStatus(ctx context.Context, number string, status model.OrderStatus, accrual *money.Amount) error {
 	const query = `
 UPDATE orders
 SET status = $2, accrual = $3, updated_at = NOW()
 WHERE number = $1`
 
-	result, err := r.q.ExecContext(ctx, query, number, status, accrual)
+	var accrualValue any
+	if accrual != nil {
+		accrualValue = *accrual
+	}
+
+	result, err := r.q.ExecContext(ctx, query, number, status, accrualValue)
 	if err != nil {
 		return fmt.Errorf("update order status: %w", err)
 	}
@@ -134,16 +140,16 @@ func (r *OrderRepository) ownerID(ctx context.Context, number string) (int64, er
 
 func (r *OrderRepository) scanOne(ctx context.Context, query string, arg any) (model.Order, error) {
 	var (
-		order   model.Order
-		status  string
-		accrual sql.NullFloat64
+		order       model.Order
+		status      string
+		accrualText sql.NullString
 	)
 
 	err := r.q.QueryRowContext(ctx, query, arg).Scan(
 		&order.Number,
 		&order.UserID,
 		&status,
-		&accrual,
+		&accrualText,
 		&order.UploadedAt,
 		&order.UpdatedAt,
 	)
@@ -152,8 +158,12 @@ func (r *OrderRepository) scanOne(ctx context.Context, query string, arg any) (m
 	}
 
 	order.Status = model.OrderStatus(status)
-	if accrual.Valid {
-		value := accrual.Float64
+	if accrualText.Valid {
+		var value money.Amount
+		if err := value.Scan(accrualText.String); err != nil {
+			return model.Order{}, fmt.Errorf("scan order accrual: %w", err)
+		}
+
 		order.Accrual = &value
 	}
 
@@ -165,16 +175,16 @@ func scanOrders(rows *sql.Rows) ([]model.Order, error) {
 
 	for rows.Next() {
 		var (
-			order   model.Order
-			status  string
-			accrual sql.NullFloat64
+			order       model.Order
+			status      string
+			accrualText sql.NullString
 		)
 
 		if err := rows.Scan(
 			&order.Number,
 			&order.UserID,
 			&status,
-			&accrual,
+			&accrualText,
 			&order.UploadedAt,
 			&order.UpdatedAt,
 		); err != nil {
@@ -182,8 +192,12 @@ func scanOrders(rows *sql.Rows) ([]model.Order, error) {
 		}
 
 		order.Status = model.OrderStatus(status)
-		if accrual.Valid {
-			value := accrual.Float64
+		if accrualText.Valid {
+			var value money.Amount
+			if err := value.Scan(accrualText.String); err != nil {
+				return nil, fmt.Errorf("scan order accrual: %w", err)
+			}
+
 			order.Accrual = &value
 		}
 
