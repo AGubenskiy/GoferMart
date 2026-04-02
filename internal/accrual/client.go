@@ -85,7 +85,9 @@ func (c *Client) GetOrder(ctx context.Context, number string) (Order, error) {
 	if err != nil {
 		return Order{}, fmt.Errorf("perform accrual request: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	switch response.StatusCode {
 	case http.StatusOK:

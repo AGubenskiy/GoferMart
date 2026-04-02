@@ -44,10 +44,6 @@ func registerUserRoutes(mux *http.ServeMux, deps Dependencies) {
 	mux.Handle("GET /api/user/withdrawals", protected(deps.AuthMiddleware, handlerOrUnavailable(deps.AccountHandler, (*AccountHandler).ListWithdrawals)))
 }
 
-func notImplemented(w http.ResponseWriter, _ *http.Request) {
-	response.Status(w, http.StatusNotImplemented)
-}
-
 func unavailable(w http.ResponseWriter, _ *http.Request) {
 	response.Status(w, http.StatusInternalServerError)
 }

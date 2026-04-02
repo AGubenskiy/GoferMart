@@ -65,17 +65,18 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 		}
 
 		if _, err := tx.ExecContext(ctx, string(payload)); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("apply migration %s: %w", name, err)
 		}
 
+		//noinspection SqlNoDataSourceInspection
 		if _, err := tx.ExecContext(
 			ctx,
 			`INSERT INTO schema_migrations (version, name, applied_at) VALUES ($1, $2, NOW())`,
 			version,
 			name,
 		); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("record migration %s: %w", name, err)
 		}
 
@@ -88,6 +89,7 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 }
 
 func ensureMigrationsTable(ctx context.Context, db *sql.DB) error {
+	//noinspection SqlNoDataSourceInspection
 	const query = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
     version BIGINT PRIMARY KEY,
@@ -107,6 +109,7 @@ func isMigrationApplied(ctx context.Context, db *sql.DB, version int64) (bool, e
 
 	err := db.QueryRowContext(
 		ctx,
+		//noinspection SqlNoDataSourceInspection
 		`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)`,
 		version,
 	).Scan(&exists)

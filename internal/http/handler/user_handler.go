@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -69,15 +68,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeCredentials(w http.ResponseWriter, r *http.Request) (credentialsRequest, bool) {
-	defer r.Body.Close()
-
-	var request credentialsRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		response.Status(w, http.StatusBadRequest)
-		return credentialsRequest{}, false
-	}
-
-	return request, true
+	return decodeJSONRequest[credentialsRequest](w, r)
 }
 
 func (h *UserHandler) writeAuthError(w http.ResponseWriter, err error, conflictStatus int, defaultStatus int) {

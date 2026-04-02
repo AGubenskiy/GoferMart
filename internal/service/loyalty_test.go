@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/AGubenskiy/GoferMart/internal/storage/postgres"
@@ -55,7 +56,7 @@ func TestApplyUploadReservationConflict(t *testing.T) {
 			var result UploadOrderResult
 			err := applyUploadReservationConflict(tt.reservation, tt.userID, &result)
 
-			if err != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("applyUploadReservationConflict() error = %v, want %v", err, tt.wantErr)
 			}
 

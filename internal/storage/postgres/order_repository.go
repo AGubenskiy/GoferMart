@@ -68,7 +68,9 @@ ORDER BY uploaded_at DESC`
 	if err != nil {
 		return nil, fmt.Errorf("list orders by user: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	return scanOrders(rows)
 }
@@ -85,7 +87,9 @@ LIMIT $3`
 	if err != nil {
 		return nil, fmt.Errorf("list orders for accrual sync: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	return scanOrders(rows)
 }

@@ -19,10 +19,14 @@ func RequestDecompressor(next http.Handler) http.Handler {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
-		defer reader.Close()
+		defer func() {
+			_ = reader.Close()
+		}()
 
 		originalBody := r.Body
-		defer originalBody.Close()
+		defer func() {
+			_ = originalBody.Close()
+		}()
 
 		r.Body = &readCloser{
 			Reader: reader,
@@ -44,7 +48,9 @@ func ResponseCompressor(next http.Handler) http.Handler {
 		w.Header().Add("Vary", "Accept-Encoding")
 
 		compressedWriter := newGzipResponseWriter(w)
-		defer compressedWriter.Close()
+		defer func() {
+			_ = compressedWriter.Close()
+		}()
 
 		next.ServeHTTP(compressedWriter, r)
 	})

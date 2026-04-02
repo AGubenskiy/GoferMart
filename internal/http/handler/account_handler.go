@@ -1,15 +1,12 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/AGubenskiy/GoferMart/internal/http/middleware"
 	"github.com/AGubenskiy/GoferMart/internal/http/response"
+	"github.com/AGubenskiy/GoferMart/internal/model"
 	"github.com/AGubenskiy/GoferMart/internal/service"
 )
 
@@ -45,25 +42,13 @@ func NewAccountHandler(loyalty *service.LoyaltyService) *AccountHandler {
 }
 
 func (h *AccountHandler) UploadOrder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
-		response.Status(w, http.StatusUnauthorized)
 		return
 	}
 
-	defer func() {
-		_ = r.Body.Close()
-	}()
-
-	payload, err := io.ReadAll(r.Body)
-	if err != nil {
-		response.Status(w, http.StatusBadRequest)
-		return
-	}
-
-	number := strings.TrimSpace(string(payload))
-	if number == "" {
-		response.Status(w, http.StatusBadRequest)
+	number, ok := readTextRequest(w, r)
+	if !ok {
 		return
 	}
 
@@ -91,40 +76,19 @@ func (h *AccountHandler) UploadOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok {
-		response.Status(w, http.StatusUnauthorized)
-		return
-	}
-
-	orders, err := h.loyalty.ListOrders(r.Context(), userID)
-	if err != nil {
-		response.Status(w, http.StatusInternalServerError)
-		return
-	}
-
-	if len(orders) == 0 {
-		response.Status(w, http.StatusNoContent)
-		return
-	}
-
-	items := make([]orderResponse, 0, len(orders))
-	for _, order := range orders {
-		items = append(items, orderResponse{
+	writeUserCollection(w, r, h.loyalty.ListOrders, func(order model.Order) orderResponse {
+		return orderResponse{
 			Number:     order.Number,
 			Status:     string(order.Status),
 			Accrual:    order.Accrual,
 			UploadedAt: order.UploadedAt.Format(time.RFC3339),
-		})
-	}
-
-	response.JSON(w, http.StatusOK, items)
+		}
+	})
 }
 
 func (h *AccountHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
-		response.Status(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -141,19 +105,13 @@ func (h *AccountHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
-		response.Status(w, http.StatusUnauthorized)
 		return
 	}
 
-	defer func() {
-		_ = r.Body.Close()
-	}()
-
-	var request withdrawalRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		response.Status(w, http.StatusBadRequest)
+	request, ok := decodeJSONRequest[withdrawalRequest](w, r)
+	if !ok {
 		return
 	}
 
@@ -167,33 +125,13 @@ func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountHandler) ListWithdrawals(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok {
-		response.Status(w, http.StatusUnauthorized)
-		return
-	}
-
-	withdrawals, err := h.loyalty.ListWithdrawals(r.Context(), userID)
-	if err != nil {
-		response.Status(w, http.StatusInternalServerError)
-		return
-	}
-
-	if len(withdrawals) == 0 {
-		response.Status(w, http.StatusNoContent)
-		return
-	}
-
-	items := make([]withdrawalResponse, 0, len(withdrawals))
-	for _, withdrawal := range withdrawals {
-		items = append(items, withdrawalResponse{
+	writeUserCollection(w, r, h.loyalty.ListWithdrawals, func(withdrawal model.Withdrawal) withdrawalResponse {
+		return withdrawalResponse{
 			Order:       withdrawal.OrderNumber,
 			Sum:         withdrawal.Sum,
 			ProcessedAt: withdrawal.ProcessedAt.Format(time.RFC3339),
-		})
-	}
-
-	response.JSON(w, http.StatusOK, items)
+		}
+	})
 }
 
 func withdrawalErrorStatus(err error) int {
