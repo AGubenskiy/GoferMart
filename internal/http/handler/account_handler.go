@@ -77,14 +77,7 @@ func (h *AccountHandler) UploadOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
-	writeUserCollection(w, r, h.loyalty.ListOrders, func(order model.Order) orderResponse {
-		return orderResponse{
-			Number:     order.Number,
-			Status:     string(order.Status),
-			Accrual:    order.Accrual,
-			UploadedAt: order.UploadedAt.Format(time.RFC3339),
-		}
-	})
+	writeUserCollection(w, r, h.loyalty.ListOrders, mapOrderResponse)
 }
 
 func (h *AccountHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -126,13 +119,24 @@ func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountHandler) ListWithdrawals(w http.ResponseWriter, r *http.Request) {
-	writeUserCollection(w, r, h.loyalty.ListWithdrawals, func(withdrawal model.Withdrawal) withdrawalResponse {
-		return withdrawalResponse{
-			Order:       withdrawal.OrderNumber,
-			Sum:         withdrawal.Sum,
-			ProcessedAt: withdrawal.ProcessedAt.Format(time.RFC3339),
-		}
-	})
+	writeUserCollection(w, r, h.loyalty.ListWithdrawals, mapWithdrawalResponse)
+}
+
+func mapOrderResponse(order model.Order) orderResponse {
+	return orderResponse{
+		Number:     order.Number,
+		Status:     string(order.Status),
+		Accrual:    order.Accrual,
+		UploadedAt: order.UploadedAt.Format(time.RFC3339),
+	}
+}
+
+func mapWithdrawalResponse(withdrawal model.Withdrawal) withdrawalResponse {
+	return withdrawalResponse{
+		Order:       withdrawal.OrderNumber,
+		Sum:         withdrawal.Sum,
+		ProcessedAt: withdrawal.ProcessedAt.Format(time.RFC3339),
+	}
 }
 
 func withdrawalErrorStatus(err error) int {
