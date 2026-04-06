@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"mime"
 	"net/http"
 	"strings"
 
@@ -33,6 +34,11 @@ func decodeJSONRequest[T any](w http.ResponseWriter, r *http.Request) (T, bool) 
 	defer closeRequestBody(r)
 
 	var request T
+	if !matchesContentType(r, "application/json") {
+		response.Status(w, http.StatusBadRequest)
+		return request, false
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		response.Status(w, http.StatusBadRequest)
 		return request, false
@@ -43,6 +49,11 @@ func decodeJSONRequest[T any](w http.ResponseWriter, r *http.Request) (T, bool) 
 
 func readTextRequest(w http.ResponseWriter, r *http.Request) (string, bool) {
 	defer closeRequestBody(r)
+
+	if !matchesContentType(r, "text/plain") {
+		response.Status(w, http.StatusBadRequest)
+		return "", false
+	}
 
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -57,6 +68,20 @@ func readTextRequest(w http.ResponseWriter, r *http.Request) (string, bool) {
 	}
 
 	return text, true
+}
+
+func matchesContentType(r *http.Request, expected string) bool {
+	value := strings.TrimSpace(r.Header.Get("Content-Type"))
+	if value == "" {
+		return true
+	}
+
+	mediaType, _, err := mime.ParseMediaType(value)
+	if err != nil {
+		return false
+	}
+
+	return strings.EqualFold(mediaType, expected)
 }
 
 func writeUserCollection[T any, R any](

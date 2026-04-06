@@ -40,7 +40,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		return nil, fmt.Errorf("initialize postgres store: %w", err)
 	}
 
-	sessions := auth.NewSessionManager("gofermart-local-secret", 24*time.Hour)
+	sessions := auth.NewSessionManager("gofermart-local-secret", 24*time.Hour) //Нужно ли убрать его в конфиг/env ?
 
 	authService := service.NewAuthService(store.Repositories().Users, sessions)
 	loyaltyService := service.NewLoyaltyService(store)
