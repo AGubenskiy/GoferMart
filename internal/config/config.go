@@ -19,9 +19,9 @@ type Config struct {
 
 func Parse(args []string) (Config, error) {
 	cfg := Config{
-		RunAddress:           getEnv("RUN_ADDRESS", defaultRunAddress),
-		DatabaseURI:          os.Getenv("DATABASE_URI"),
-		AccrualSystemAddress: os.Getenv("ACCRUAL_SYSTEM_ADDRESS"),
+		RunAddress:           getEnvOrDefault("RUN_ADDRESS", defaultRunAddress),
+		DatabaseURI:          getEnv("DATABASE_URI"),
+		AccrualSystemAddress: getEnv("ACCRUAL_SYSTEM_ADDRESS"),
 		ShutdownTimeout:      10 * time.Second,
 	}
 
@@ -57,9 +57,18 @@ func Parse(args []string) (Config, error) {
 	return cfg, nil
 }
 
-func getEnv(key, fallback string) string {
-	value := os.Getenv(key)
-	if value == "" {
+func getEnv(key string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return ""
+	}
+
+	return value
+}
+
+func getEnvOrDefault(key, fallback string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
 		return fallback
 	}
 
