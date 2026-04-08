@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AGubenskiy/GoferMart/internal/validate"
 	appmigrations "github.com/AGubenskiy/GoferMart/migrations"
 )
 
@@ -40,6 +41,10 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 	sort.Strings(names)
 
 	for _, name := range names {
+		if err := validateMigrationName(name); err != nil {
+			return err
+		}
+
 		version, err := parseMigrationVersion(name)
 		if err != nil {
 			return err
@@ -88,12 +93,20 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+func validateMigrationName(name string) error {
+	if validate.StringLengthAtMost(name, validate.MaxVarcharLength) {
+		return nil
+	}
+
+	return fmt.Errorf("migration name %q exceeds %d characters", name, validate.MaxVarcharLength)
+}
+
 func ensureMigrationsTable(ctx context.Context, db *sql.DB) error {
 	//noinspection SqlNoDataSourceInspection
 	const query = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
     version BIGINT PRIMARY KEY,
-    name TEXT NOT NULL,
+    name VARCHAR(200) NOT NULL,
     applied_at TIMESTAMPTZ NOT NULL
 )`
 

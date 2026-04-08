@@ -7,6 +7,7 @@ import (
 
 	"github.com/AGubenskiy/GoferMart/internal/auth"
 	"github.com/AGubenskiy/GoferMart/internal/storage/postgres"
+	"github.com/AGubenskiy/GoferMart/internal/validate"
 )
 
 type AuthService struct {
@@ -31,7 +32,7 @@ func (s *AuthService) Register(ctx context.Context, login, password string) (str
 	}
 
 	login = strings.TrimSpace(login)
-	if login == "" || password == "" {
+	if login == "" || password == "" || !validate.StringLengthAtMost(login, validate.MaxVarcharLength) {
 		return "", ErrInvalidInput
 	}
 
@@ -58,7 +59,7 @@ func (s *AuthService) Login(ctx context.Context, login, password string) (string
 	}
 
 	login = strings.TrimSpace(login)
-	if login == "" || password == "" {
+	if login == "" || password == "" || !validate.StringLengthAtMost(login, validate.MaxVarcharLength) {
 		return "", ErrInvalidInput
 	}
 

@@ -45,7 +45,7 @@ func (s *LoyaltyService) UploadOrder(ctx context.Context, userID int64, number s
 	}
 
 	number = strings.TrimSpace(number)
-	if !validate.OrderNumber(number) {
+	if !validate.StringLengthAtMost(number, validate.MaxVarcharLength) || !validate.OrderNumber(number) {
 		return UploadOrderResult{}, ErrInvalidOrderNumber
 	}
 
@@ -109,7 +109,7 @@ func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, ord
 	}
 
 	orderNumber = strings.TrimSpace(orderNumber)
-	if !validate.OrderNumber(orderNumber) {
+	if !validate.StringLengthAtMost(orderNumber, validate.MaxVarcharLength) || !validate.OrderNumber(orderNumber) {
 		return ErrInvalidOrderNumber
 	}
 
