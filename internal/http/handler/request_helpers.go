@@ -15,7 +15,7 @@ import (
 func authenticatedUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
-		response.Status(w, http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
 		return 0, false
 	}
 
@@ -35,12 +35,12 @@ func decodeJSONRequest[T any](w http.ResponseWriter, r *http.Request) (T, bool) 
 
 	var request T
 	if !matchesContentType(r, "application/json") {
-		response.Status(w, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return request, false
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		response.Status(w, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return request, false
 	}
 
@@ -51,19 +51,19 @@ func readTextRequest(w http.ResponseWriter, r *http.Request) (string, bool) {
 	defer closeRequestBody(r)
 
 	if !matchesContentType(r, "text/plain") {
-		response.Status(w, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return "", false
 	}
 
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		response.Status(w, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return "", false
 	}
 
 	text := strings.TrimSpace(string(payload))
 	if text == "" {
-		response.Status(w, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return "", false
 	}
 
@@ -97,12 +97,12 @@ func writeUserCollection[T any, R any](
 
 	items, err := list(r.Context(), userID)
 	if err != nil {
-		response.Status(w, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if len(items) == 0 {
-		response.Status(w, http.StatusNoContent)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 

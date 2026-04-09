@@ -57,23 +57,23 @@ func (h *AccountHandler) UploadOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidOrderNumber):
-			response.Status(w, http.StatusUnprocessableEntity)
+			w.WriteHeader(http.StatusUnprocessableEntity)
 		case errors.Is(err, service.ErrOrderConflict):
-			response.Status(w, http.StatusConflict)
+			w.WriteHeader(http.StatusConflict)
 		case errors.Is(err, service.ErrUnavailable):
-			response.Status(w, http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
 		default:
-			response.Status(w, http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
 
 	if result.Accepted {
-		response.Status(w, http.StatusAccepted)
+		w.WriteHeader(http.StatusAccepted)
 		return
 	}
 
-	response.Status(w, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *AccountHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +88,7 @@ func (h *AccountHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	balance, err := h.loyalty.GetBalance(r.Context(), userID)
 	if err != nil {
-		response.Status(w, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -111,11 +111,11 @@ func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	err := h.loyalty.CreateWithdrawal(r.Context(), userID, request.Order, request.Sum)
 	if err != nil {
-		response.Status(w, withdrawalErrorStatus(err))
+		w.WriteHeader(withdrawalErrorStatus(err))
 		return
 	}
 
-	response.Status(w, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *AccountHandler) ListWithdrawals(w http.ResponseWriter, r *http.Request) {

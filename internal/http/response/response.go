@@ -15,7 +15,3 @@ func JSON(w http.ResponseWriter, status int, payload any) {
 
 	_ = json.NewEncoder(w).Encode(payload)
 }
-
-func Status(w http.ResponseWriter, status int) {
-	w.WriteHeader(status)
-}

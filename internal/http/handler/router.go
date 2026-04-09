@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/AGubenskiy/GoferMart/internal/http/middleware"
-	"github.com/AGubenskiy/GoferMart/internal/http/response"
 )
 
 type Dependencies struct {
@@ -21,8 +20,8 @@ func NewRouter(log *slog.Logger, deps Dependencies) http.Handler {
 
 	return middleware.Recover(log)(
 		middleware.RequestLogger(log)(
-			middleware.ResponseCompressor(
-				middleware.RequestDecompressor(mux),
+			middleware.ResponseCompressor(log)(
+				middleware.RequestDecompressor(log)(mux),
 			),
 		),
 	)
@@ -45,7 +44,7 @@ func registerUserRoutes(mux *http.ServeMux, deps Dependencies) {
 }
 
 func unavailable(w http.ResponseWriter, _ *http.Request) {
-	response.Status(w, http.StatusInternalServerError)
+	w.WriteHeader(http.StatusInternalServerError)
 }
 
 func protected(authMiddleware func(http.Handler) http.Handler, next http.Handler) http.Handler {

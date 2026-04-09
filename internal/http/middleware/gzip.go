@@ -3,57 +3,76 @@ package middleware
 import (
 	"compress/gzip"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 )
 
-func RequestDecompressor(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(strings.ToLower(r.Header.Get("Content-Encoding")), "gzip") {
+func RequestDecompressor(log *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(strings.ToLower(r.Header.Get("Content-Encoding")), "gzip") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			reader, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+				return
+			}
+			defer func() {
+				if err := reader.Close(); err != nil {
+					logCloseError(log, "close gzip request reader", r, err)
+				}
+			}()
+
+			originalBody := r.Body
+			defer func() {
+				if err := originalBody.Close(); err != nil {
+					logCloseError(log, "close original request body", r, err)
+				}
+			}()
+
+			r.Body = &readCloser{
+				Reader: reader,
+				Closer: originalBody,
+			}
+			r.Header.Del("Content-Encoding")
+
 			next.ServeHTTP(w, r)
-			return
-		}
-
-		reader, err := gzip.NewReader(r.Body)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			return
-		}
-		defer func() {
-			_ = reader.Close()
-		}()
-
-		originalBody := r.Body
-		defer func() {
-			_ = originalBody.Close()
-		}()
-
-		r.Body = &readCloser{
-			Reader: reader,
-			Closer: originalBody,
-		}
-		r.Header.Del("Content-Encoding")
-
-		next.ServeHTTP(w, r)
-	})
+		})
+	}
 }
 
-func ResponseCompressor(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(strings.ToLower(r.Header.Get("Accept-Encoding")), "gzip") {
-			next.ServeHTTP(w, r)
-			return
-		}
+func ResponseCompressor(log *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(strings.ToLower(r.Header.Get("Accept-Encoding")), "gzip") {
+				next.ServeHTTP(w, r)
+				return
+			}
 
-		w.Header().Add("Vary", "Accept-Encoding")
+			w.Header().Add("Vary", "Accept-Encoding")
 
-		compressedWriter := newGzipResponseWriter(w)
-		defer func() {
-			_ = compressedWriter.Close()
-		}()
+			compressedWriter := newGzipResponseWriter(w)
+			defer func() {
+				if err := compressedWriter.Close(); err != nil {
+					logCloseError(log, "close gzip response writer", r, err)
+				}
+			}()
 
-		next.ServeHTTP(compressedWriter, r)
-	})
+			next.ServeHTTP(compressedWriter, r)
+		})
+	}
+}
+
+func logCloseError(log *slog.Logger, message string, r *http.Request, err error) {
+	if log == nil {
+		return
+	}
+
+	log.Error(message, "method", r.Method, "path", r.URL.Path, "error", err)
 }
 
 type readCloser struct {

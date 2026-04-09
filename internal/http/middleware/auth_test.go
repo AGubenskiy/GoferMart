@@ -58,3 +58,25 @@ func TestAuthRequiredWithoutToken(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusUnauthorized)
 	}
 }
+
+func TestAuthRequiredWithoutSessionManager(t *testing.T) {
+	t.Parallel()
+
+	nextCalled := false
+	handler := AuthRequired(nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	request := httptest.NewRequest(http.MethodGet, "/api/user/balance", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusInternalServerError)
+	}
+
+	if nextCalled {
+		t.Fatal("next handler was called")
+	}
+}

@@ -19,13 +19,16 @@ func UserIDFromContext(ctx context.Context) (int64, bool) {
 }
 
 func AuthRequired(sessions *auth.SessionManager) func(http.Handler) http.Handler {
+	if sessions == nil {
+		return func(_ http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			})
+		}
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if sessions == nil {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-
 			token, err := extractToken(r)
 			if err != nil {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)

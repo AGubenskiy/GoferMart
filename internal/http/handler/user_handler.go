@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/AGubenskiy/GoferMart/internal/auth"
-	"github.com/AGubenskiy/GoferMart/internal/http/response"
 	"github.com/AGubenskiy/GoferMart/internal/service"
 )
 
@@ -39,7 +38,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, h.sessions.BuildCookie(token))
-	response.Status(w, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -52,19 +51,19 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidInput):
-			response.Status(w, http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
 		case errors.Is(err, service.ErrInvalidCredentials):
-			response.Status(w, http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
 		case errors.Is(err, service.ErrUnavailable):
-			response.Status(w, http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
 		default:
-			response.Status(w, http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
 
 	http.SetCookie(w, h.sessions.BuildCookie(token))
-	response.Status(w, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
 func decodeCredentials(w http.ResponseWriter, r *http.Request) (credentialsRequest, bool) {
@@ -74,12 +73,12 @@ func decodeCredentials(w http.ResponseWriter, r *http.Request) (credentialsReque
 func (h *UserHandler) writeAuthError(w http.ResponseWriter, err error, conflictStatus int, defaultStatus int) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput):
-		response.Status(w, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 	case errors.Is(err, service.ErrLoginAlreadyTaken):
-		response.Status(w, conflictStatus)
+		w.WriteHeader(conflictStatus)
 	case errors.Is(err, service.ErrUnavailable):
-		response.Status(w, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 	default:
-		response.Status(w, defaultStatus)
+		w.WriteHeader(defaultStatus)
 	}
 }

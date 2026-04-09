@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -12,6 +13,19 @@ import (
 )
 
 const CookieName = "gophermart_session"
+
+const jwtAlgorithm = "HS256"
+
+type jwtHeader struct {
+	Algorithm string `json:"alg"`
+	Type      string `json:"typ"`
+}
+
+type sessionClaims struct {
+	Subject   string `json:"sub"`
+	ExpiresAt int64  `json:"exp"`
+	IssuedAt  int64  `json:"iat"`
+}
 
 type SessionManager struct {
 	secret []byte
@@ -30,51 +44,73 @@ func (m *SessionManager) Issue(userID int64) (string, error) {
 		return "", fmt.Errorf("invalid user ID: %d", userID)
 	}
 
-	expiresAt := time.Now().Add(m.ttl).Unix()
-	payload := strconv.FormatInt(userID, 10) + ":" + strconv.FormatInt(expiresAt, 10)
-	signature := m.sign(payload)
+	now := time.Now()
+	header := jwtHeader{
+		Algorithm: jwtAlgorithm,
+		Type:      "JWT",
+	}
+	claims := sessionClaims{
+		Subject:   strconv.FormatInt(userID, 10),
+		ExpiresAt: now.Add(m.ttl).Unix(),
+		IssuedAt:  now.Unix(),
+	}
 
-	return base64.RawURLEncoding.EncodeToString([]byte(payload)) + "." + base64.RawURLEncoding.EncodeToString(signature), nil
+	encodedHeader, err := encodeJWTPart(header)
+	if err != nil {
+		return "", fmt.Errorf("encode JWT header: %w", err)
+	}
+
+	encodedClaims, err := encodeJWTPart(claims)
+	if err != nil {
+		return "", fmt.Errorf("encode JWT claims: %w", err)
+	}
+
+	signingInput := encodedHeader + "." + encodedClaims
+	signature := m.sign(signingInput)
+
+	return signingInput + "." + base64.RawURLEncoding.EncodeToString(signature), nil
 }
 
 func (m *SessionManager) Verify(token string) (int64, error) {
 	parts := strings.Split(token, ".")
-	if len(parts) != 2 {
-		return 0, fmt.Errorf("invalid token format")
+	if len(parts) != 3 {
+		return 0, fmt.Errorf("invalid JWT format")
 	}
 
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
+	var header jwtHeader
+	if err := decodeJWTPart(parts[0], &header); err != nil {
+		return 0, fmt.Errorf("decode JWT header: %w", err)
+	}
+
+	if header.Algorithm != jwtAlgorithm {
+		return 0, fmt.Errorf("unexpected JWT algorithm: %s", header.Algorithm)
+	}
+
+	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
-		return 0, fmt.Errorf("decode token payload: %w", err)
+		return 0, fmt.Errorf("decode JWT signature: %w", err)
 	}
 
-	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return 0, fmt.Errorf("decode token signature: %w", err)
-	}
-
-	payload := string(payloadBytes)
-	expectedSignature := m.sign(payload)
+	signingInput := parts[0] + "." + parts[1]
+	expectedSignature := m.sign(signingInput)
 	if !hmac.Equal(signature, expectedSignature) {
-		return 0, fmt.Errorf("invalid token signature")
+		return 0, fmt.Errorf("invalid JWT signature")
 	}
 
-	fields := strings.Split(payload, ":")
-	if len(fields) != 2 {
-		return 0, fmt.Errorf("invalid token payload")
+	var claims sessionClaims
+	if err := decodeJWTPart(parts[1], &claims); err != nil {
+		return 0, fmt.Errorf("decode JWT claims: %w", err)
 	}
 
-	userID, err := strconv.ParseInt(fields[0], 10, 64)
+	userID, err := strconv.ParseInt(claims.Subject, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("parse token user ID: %w", err)
+		return 0, fmt.Errorf("parse JWT subject: %w", err)
+	}
+	if userID <= 0 {
+		return 0, fmt.Errorf("invalid JWT subject: %d", userID)
 	}
 
-	expiresAtUnix, err := strconv.ParseInt(fields[1], 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse token expiration: %w", err)
-	}
-
-	if time.Now().After(time.Unix(expiresAtUnix, 0)) {
+	if time.Now().Unix() >= claims.ExpiresAt {
 		return 0, fmt.Errorf("token expired")
 	}
 
@@ -108,4 +144,22 @@ func (m *SessionManager) sign(payload string) []byte {
 	mac := hmac.New(sha256.New, m.secret)
 	mac.Write([]byte(payload))
 	return mac.Sum(nil)
+}
+
+func encodeJWTPart(value any) (string, error) {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(payload), nil
+}
+
+func decodeJWTPart(encoded string, target any) error {
+	payload, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(payload, target)
 }
