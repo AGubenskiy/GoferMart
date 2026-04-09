@@ -60,8 +60,6 @@ func (h *AccountHandler) UploadOrder(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		case errors.Is(err, service.ErrOrderConflict):
 			w.WriteHeader(http.StatusConflict)
-		case errors.Is(err, service.ErrUnavailable):
-			w.WriteHeader(http.StatusInternalServerError)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -147,8 +145,6 @@ func withdrawalErrorStatus(err error) int {
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrInsufficientFunds):
 		return http.StatusPaymentRequired
-	case errors.Is(err, service.ErrUnavailable):
-		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError
 	}

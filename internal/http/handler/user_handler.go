@@ -54,8 +54,6 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		case errors.Is(err, service.ErrInvalidCredentials):
 			w.WriteHeader(http.StatusUnauthorized)
-		case errors.Is(err, service.ErrUnavailable):
-			w.WriteHeader(http.StatusInternalServerError)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -76,8 +74,6 @@ func (h *UserHandler) writeAuthError(w http.ResponseWriter, err error, conflictS
 		w.WriteHeader(http.StatusBadRequest)
 	case errors.Is(err, service.ErrLoginAlreadyTaken):
 		w.WriteHeader(conflictStatus)
-	case errors.Is(err, service.ErrUnavailable):
-		w.WriteHeader(http.StatusInternalServerError)
 	default:
 		w.WriteHeader(defaultStatus)
 	}

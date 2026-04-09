@@ -16,10 +16,6 @@ type AuthService struct {
 }
 
 func NewAuthService(users *postgres.UserRepository, sessions *auth.SessionManager) *AuthService {
-	if users == nil || sessions == nil {
-		return nil
-	}
-
 	return &AuthService{
 		users:    users,
 		sessions: sessions,
@@ -27,10 +23,6 @@ func NewAuthService(users *postgres.UserRepository, sessions *auth.SessionManage
 }
 
 func (s *AuthService) Register(ctx context.Context, login, password string) (string, error) {
-	if s == nil {
-		return "", ErrUnavailable
-	}
-
 	login = strings.TrimSpace(login)
 	if login == "" || password == "" || !validate.StringLengthAtMost(login, validate.MaxVarcharLength) {
 		return "", ErrInvalidInput
@@ -54,10 +46,6 @@ func (s *AuthService) Register(ctx context.Context, login, password string) (str
 }
 
 func (s *AuthService) Login(ctx context.Context, login, password string) (string, error) {
-	if s == nil {
-		return "", ErrUnavailable
-	}
-
 	login = strings.TrimSpace(login)
 	if login == "" || password == "" || !validate.StringLengthAtMost(login, validate.MaxVarcharLength) {
 		return "", ErrInvalidInput

@@ -24,10 +24,6 @@ type UploadOrderResult struct {
 }
 
 func NewLoyaltyService(store *postgres.Store) *LoyaltyService {
-	if store == nil {
-		return nil
-	}
-
 	repos := store.Repositories()
 
 	return &LoyaltyService{
@@ -40,10 +36,6 @@ func NewLoyaltyService(store *postgres.Store) *LoyaltyService {
 }
 
 func (s *LoyaltyService) UploadOrder(ctx context.Context, userID int64, number string) (UploadOrderResult, error) {
-	if s == nil {
-		return UploadOrderResult{}, ErrUnavailable
-	}
-
 	number = strings.TrimSpace(number)
 	if !validate.StringLengthAtMost(number, validate.MaxVarcharLength) || !validate.OrderNumber(number) {
 		return UploadOrderResult{}, ErrInvalidOrderNumber
@@ -88,26 +80,14 @@ func (s *LoyaltyService) UploadOrder(ctx context.Context, userID int64, number s
 }
 
 func (s *LoyaltyService) ListOrders(ctx context.Context, userID int64) ([]model.Order, error) {
-	if s == nil {
-		return nil, ErrUnavailable
-	}
-
 	return s.orders.ListByUser(ctx, userID)
 }
 
 func (s *LoyaltyService) GetBalance(ctx context.Context, userID int64) (model.Balance, error) {
-	if s == nil {
-		return model.Balance{}, ErrUnavailable
-	}
-
 	return s.withdrawals.GetBalance(ctx, userID)
 }
 
 func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, orderNumber string, sum money.Amount) error {
-	if s == nil {
-		return ErrUnavailable
-	}
-
 	orderNumber = strings.TrimSpace(orderNumber)
 	if !validate.StringLengthAtMost(orderNumber, validate.MaxVarcharLength) || !validate.OrderNumber(orderNumber) {
 		return ErrInvalidOrderNumber
@@ -152,10 +132,6 @@ func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, ord
 }
 
 func (s *LoyaltyService) ListWithdrawals(ctx context.Context, userID int64) ([]model.Withdrawal, error) {
-	if s == nil {
-		return nil, ErrUnavailable
-	}
-
 	return s.withdrawals.ListByUser(ctx, userID)
 }
 

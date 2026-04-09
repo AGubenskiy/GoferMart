@@ -42,7 +42,7 @@ type Order struct {
 
 type Client struct {
 	baseURL    *url.URL
-	httpClient *http.Client
+	httpClient httpDoer
 }
 
 type orderResponse struct {
@@ -68,9 +68,9 @@ func NewClient(address string) (*Client, error) {
 
 	return &Client{
 		baseURL: baseURL,
-		httpClient: &http.Client{
+		httpClient: newRetryingHTTPClient(&http.Client{
 			Timeout: 5 * time.Second,
-		},
+		}),
 	}, nil
 }
 

@@ -6,7 +6,6 @@ var (
 	ErrInvalidInput           = errors.New("invalid input")
 	ErrLoginAlreadyTaken      = errors.New("login already taken")
 	ErrInvalidCredentials     = errors.New("invalid credentials")
-	ErrUnavailable            = errors.New("service unavailable")
 	ErrInvalidOrderNumber     = errors.New("invalid order number")
 	ErrOrderNumberUnavailable = errors.New("order number unavailable")
 	ErrOrderConflict          = errors.New("order conflict")
