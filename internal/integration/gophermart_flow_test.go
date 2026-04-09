@@ -102,9 +102,13 @@ func TestGophermartMainFlow(t *testing.T) {
 
 	workerCtx, stopWorker := context.WithCancel(context.Background())
 	workerDone := make(chan struct{})
+	accrualWorker, err := worker.NewAccrualWorker(log, accrualClient, store.Repositories().Orders)
+	if err != nil {
+		t.Fatalf("NewAccrualWorker() error = %v", err)
+	}
 	go func() {
 		defer close(workerDone)
-		worker.NewAccrualWorker(log, accrualClient, store.Repositories().Orders).Run(workerCtx)
+		accrualWorker.Run(workerCtx)
 	}()
 	t.Cleanup(func() {
 		stopWorker()
@@ -394,7 +398,11 @@ func doRequest(
 	if err != nil {
 		t.Fatalf("perform request %s %s: %v", method, requestURL, err)
 	}
-	defer response.Body.Close()
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			t.Errorf("close response body: %v", err)
+		}
+	}()
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {

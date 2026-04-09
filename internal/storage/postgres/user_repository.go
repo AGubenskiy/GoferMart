@@ -58,7 +58,7 @@ WHERE login = $1`
 }
 
 func (r *UserRepository) LockByID(ctx context.Context, id int64) error {
-	const query = `SELECT id FROM users WHERE id = $1 FOR UPDATE`
+	const query = `SELECT id FROM users WHERE id = $1 FOR UPDATE` //блокировка на строку пользователя
 
 	var lockedID int64
 	if err := r.q.QueryRowContext(ctx, query, id).Scan(&lockedID); err != nil {

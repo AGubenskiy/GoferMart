@@ -100,7 +100,7 @@ func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, ord
 	return s.store.WithTx(ctx, func(repos *postgres.Repositories) error {
 		if err := repos.Users.LockByID(ctx, userID); err != nil {
 			return err
-		}
+		} // блокировка SELECT ... FOR UPDATE;
 
 		if err := repos.OrderNumbers.Reserve(ctx, userID, orderNumber, postgres.OrderNumberKindWithdrawal); err != nil {
 			if errors.Is(err, postgres.ErrOrderNumberAlreadyReserved) {

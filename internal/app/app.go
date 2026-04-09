@@ -51,7 +51,11 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (*App, error)
 		return nil, fmt.Errorf("initialize accrual client: %w", err)
 	}
 
-	accrualWorker := worker.NewAccrualWorker(log, accrualClient, store.Repositories().Orders)
+	accrualWorker, err := worker.NewAccrualWorker(log, accrualClient, store.Repositories().Orders)
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("initialize accrual worker: %w", err)
+	}
 
 	router := handler.NewRouter(log, handler.Dependencies{
 		UserHandler:    handler.NewUserHandler(authService, sessions),
@@ -77,10 +81,7 @@ func (a *App) Run(ctx context.Context) error {
 	defer cancel()
 
 	serverErr := make(chan error, 1)
-
-	if a.worker != nil {
-		go a.worker.Run(runCtx)
-	}
+	workerDone := a.startWorker(runCtx)
 
 	go func() {
 		a.log.Info("starting HTTP server", "address", a.cfg.RunAddress)
@@ -95,18 +96,40 @@ func (a *App) Run(ctx context.Context) error {
 
 	select {
 	case <-runCtx.Done():
-		return a.shutdown()
+		cancel()
+		return a.shutdown(workerDone)
 	case err, ok := <-serverErr:
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
+		defer stopCancel()
+
 		if !ok {
+			cancel()
+			_ = waitDone(stopCtx, workerDone)
 			return nil
 		}
 
 		cancel()
+		_ = waitDone(stopCtx, workerDone)
 		return err
 	}
 }
 
-func (a *App) shutdown() error {
+func (a *App) startWorker(ctx context.Context) <-chan struct{} {
+	done := make(chan struct{})
+	if a.worker == nil {
+		close(done)
+		return done
+	}
+
+	go func() {
+		defer close(done)
+		a.worker.Run(ctx)
+	}()
+
+	return done
+}
+
+func (a *App) shutdown(workerDone <-chan struct{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
 	defer cancel()
 
@@ -116,9 +139,22 @@ func (a *App) shutdown() error {
 		return fmt.Errorf("shutdown server: %w", err)
 	}
 
+	if err := waitDone(ctx, workerDone); err != nil {
+		return fmt.Errorf("stop accrual worker: %w", err)
+	}
+
 	if err := a.store.Close(); err != nil {
 		return fmt.Errorf("close postgres store: %w", err)
 	}
 
 	return nil
+}
+
+func waitDone(ctx context.Context, done <-chan struct{}) error {
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

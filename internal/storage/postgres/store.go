@@ -50,7 +50,7 @@ func (s *Store) Repositories() *Repositories {
 }
 
 func (s *Store) WithTx(ctx context.Context, fn func(*Repositories) error) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.db.BeginTx(ctx, nil) //Специальный уровень изоляциии не задается, для PostgreSQL это Read Committed
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
