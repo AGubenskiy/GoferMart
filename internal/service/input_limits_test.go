@@ -16,11 +16,11 @@ func TestAuthServiceRejectsTooLongLogin(t *testing.T) {
 	login := strings.Repeat("a", validate.MaxVarcharLength+1)
 	service := &AuthService{}
 
-	if _, err := service.Register(context.Background(), login, "password"); !errors.Is(err, ErrInvalidInput) {
+	if _, err := service.Register(context.Background(), login, "Strong-password1"); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("Register() error = %v, want %v", err, ErrInvalidInput)
 	}
 
-	if _, err := service.Login(context.Background(), login, "password"); !errors.Is(err, ErrInvalidInput) {
+	if _, err := service.Login(context.Background(), login, "Strong-password1"); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("Login() error = %v, want %v", err, ErrInvalidInput)
 	}
 }

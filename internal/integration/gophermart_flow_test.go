@@ -79,16 +79,16 @@ func TestGophermartMainFlow(t *testing.T) {
 
 	doRequest(t, client, http.MethodGet, apiServer.URL+"/api/user/balance", "", nil, http.StatusUnauthorized)
 
-	registerUser(t, client, apiServer.URL, "alice", "strong-password", http.StatusOK)
-	registerUser(t, otherClient, apiServer.URL, "alice", "other-password", http.StatusConflict)
+	registerUser(t, client, apiServer.URL, "alice", "strong-password1", http.StatusOK)
+	registerUser(t, otherClient, apiServer.URL, "alice", "other-password1", http.StatusConflict)
 	loginUser(t, otherClient, apiServer.URL, "alice", "wrong-password", http.StatusUnauthorized)
-	loginUser(t, client, apiServer.URL, "alice", "strong-password", http.StatusOK)
+	loginUser(t, client, apiServer.URL, "alice", "strong-password1", http.StatusOK)
 
 	uploadOrder(t, client, apiServer.URL, "12345678904", http.StatusUnprocessableEntity)
 	uploadOrder(t, client, apiServer.URL, uploadedOrderNumber, http.StatusAccepted)
 	uploadOrder(t, client, apiServer.URL, uploadedOrderNumber, http.StatusOK)
 
-	registerUser(t, otherClient, apiServer.URL, "bob", "another-password", http.StatusOK)
+	registerUser(t, otherClient, apiServer.URL, "bob", "another-password1", http.StatusOK)
 	uploadOrder(t, otherClient, apiServer.URL, uploadedOrderNumber, http.StatusConflict)
 	doRequest(t, otherClient, http.MethodGet, apiServer.URL+"/api/user/orders", "", nil, http.StatusNoContent)
 	doRequest(t, otherClient, http.MethodGet, apiServer.URL+"/api/user/withdrawals", "", nil, http.StatusNoContent)

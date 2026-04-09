@@ -30,6 +30,10 @@ func (s *AuthService) Register(ctx context.Context, login, password string) (str
 
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
+		if errors.Is(err, auth.ErrWeakPassword) {
+			return "", ErrInvalidInput
+		}
+
 		return "", err
 	}
 
