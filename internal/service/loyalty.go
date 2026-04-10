@@ -118,7 +118,19 @@ func (s *LoyaltyService) CreateWithdrawal(ctx context.Context, userID int64, ord
 		if balance.Current < sum {
 			return ErrInsufficientFunds
 		}
-
+		//дал ответ в другой ветке продублирую тут
+		////
+		//Должно работать. Дефолтный уровень изоляции PostgreSQL Read Committed.
+		//Списание идет внутри одной транзакции и используется блокировка SELECT ... FOR UPDATE;
+		//Значит несколько параллельных списаний одного и того же пользователя не идут одновременно, последующее ждёт, пока первое завершится.
+		//Похоже на пессимистичную блокировку для конкретного пользователя.
+		//if err := repos.Users.LockByID(ctx, userID); err != nil {
+		//	return err
+		//}
+		//
+		//func (r *UserRepository) LockByID(ctx context.Context, id int64) error {
+		//	const query = SELECT id FROM users WHERE id = $1 FOR UPDATE
+		//
 		if err := repos.Withdrawals.Create(ctx, userID, orderNumber, sum); err != nil {
 			if errors.Is(err, postgres.ErrWithdrawalOrderAlreadyExists) {
 				return ErrOrderNumberUnavailable
