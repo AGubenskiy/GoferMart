@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AGubenskiy/GoferMart/internal/auth"
 	"github.com/AGubenskiy/GoferMart/internal/money"
 	"github.com/AGubenskiy/GoferMart/internal/validate"
 )
@@ -21,6 +22,17 @@ func TestAuthServiceRejectsTooLongLogin(t *testing.T) {
 	}
 
 	if _, err := service.Login(context.Background(), login, "Strong-password1"); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("Login() error = %v, want %v", err, ErrInvalidInput)
+	}
+}
+
+func TestAuthServiceRejectsTooLongPasswordOnLogin(t *testing.T) {
+	t.Parallel()
+
+	password := strings.Repeat("A", auth.MaxPasswordBytes+1)
+	service := &AuthService{}
+
+	if _, err := service.Login(context.Background(), "alice", password); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("Login() error = %v, want %v", err, ErrInvalidInput)
 	}
 }

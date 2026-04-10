@@ -16,6 +16,7 @@ const CookieName = "gophermart_session"
 
 const jwtAlgorithm = "HS256"
 
+// нужно ли переходить на jwt/v5 ?
 type jwtHeader struct {
 	Algorithm string `json:"alg"`
 	Type      string `json:"typ"`

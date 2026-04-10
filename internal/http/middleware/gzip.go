@@ -35,7 +35,7 @@ func RequestDecompressor(log *slog.Logger) func(http.Handler) http.Handler {
 			}()
 
 			r.Body = &readCloser{
-				Reader: reader,
+				Reader: reader, // Нужно ли ограничивать максимальный размер в теории можно использовать атаку Zip Bomb
 				Closer: originalBody,
 			}
 			r.Header.Del("Content-Encoding")

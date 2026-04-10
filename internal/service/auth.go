@@ -51,7 +51,7 @@ func (s *AuthService) Register(ctx context.Context, login, password string) (str
 
 func (s *AuthService) Login(ctx context.Context, login, password string) (string, error) {
 	login = strings.TrimSpace(login)
-	if login == "" || password == "" || !validate.StringLengthAtMost(login, validate.MaxVarcharLength) {
+	if login == "" || password == "" || len(password) > auth.MaxPasswordBytes || !validate.StringLengthAtMost(login, validate.MaxVarcharLength) { //отсекаю так же слишком длинные пароли
 		return "", ErrInvalidInput
 	}
 

@@ -1,7 +1,9 @@
 package money
 
 import (
+	"database/sql/driver"
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -61,5 +63,89 @@ func TestAmountJSON(t *testing.T) {
 
 	if string(encoded) != `{"sum":10.5}` {
 		t.Fatalf("Marshal() = %s, want %s", string(encoded), `{"sum":10.5}`)
+	}
+}
+
+func TestAmountValue(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   Amount
+		want driver.Value
+	}{
+		{name: "zero", in: 0, want: "0"},
+		{name: "positive", in: NewFromCents(1050), want: "10.5"},
+		{name: "negative", in: NewFromCents(-10), want: "-0.1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := tt.in.Value()
+			if err != nil {
+				t.Fatalf("Value() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("Value() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAmountScan(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		src           any
+		want          Amount
+		wantErr       bool
+		wantErrSubstr string
+	}{
+		{name: "string integer", src: "42", want: NewFromCents(4200)},
+		{name: "string decimal", src: "10.25", want: NewFromCents(1025)},
+		{name: "bytes decimal", src: []byte("500.5"), want: NewFromCents(50050)},
+		{name: "int64 whole units", src: int64(7), want: NewFromCents(700)},
+		{name: "float64 decimal", src: 0.1, want: NewFromCents(10)},
+		{name: "nil source", src: nil, wantErr: true, wantErrSubstr: "amount is null"},
+		{name: "invalid string", src: "abc", wantErr: true, wantErrSubstr: "invalid amount"},
+		{name: "invalid bytes", src: []byte("1.005"), wantErr: true, wantErrSubstr: "at most two fractional digits"},
+		{name: "unsupported type", src: true, wantErr: true, wantErrSubstr: "unsupported amount source bool"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got Amount
+			err := got.Scan(tt.src)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Scan() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil {
+				if tt.wantErrSubstr != "" && !strings.Contains(err.Error(), tt.wantErrSubstr) {
+					t.Fatalf("Scan() error = %q, want substring %q", err.Error(), tt.wantErrSubstr)
+				}
+				return
+			}
+			if got != tt.want {
+				t.Fatalf("Scan() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAmountScanNilReceiver(t *testing.T) {
+	t.Parallel()
+
+	var amount *Amount
+	err := amount.Scan("1")
+	if err == nil {
+		t.Fatal("Scan() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "amount target is nil") {
+		t.Fatalf("Scan() error = %q, want nil target error", err.Error())
 	}
 }
